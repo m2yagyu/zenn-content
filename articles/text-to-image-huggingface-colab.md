@@ -3,7 +3,7 @@ title: "文章から絵を描いてもらう。ブラウザだけで作る、は
 emoji: "🎨"
 type: "tech" # tech: 技術記事 / idea: アイデア
 topics: ["colab", "python", "ai", "初心者", "huggingface"]
-published: false
+published: true
 ---
 
 この記事を読むと、日本語や英語の文章を書くだけで、AIに自分だけの画像を描いてもらえるようになります。プログラミング経験・環境構築・課金は一切不要です。

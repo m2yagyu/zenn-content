@@ -3,7 +3,7 @@ title: "拡散モデルの中身を覗いてみる：物理の「拡散」から
 emoji: "🌫️"
 type: "tech" # tech: 技術記事 / idea: アイデア
 topics: ["machinelearning", "python", "diffusion", "初心者", "物理"]
-published: false
+published: true
 ---
 
 この記事を読むと、画像生成AIの裏側で動く「拡散モデル」の仕組みを、自分の手で小さなモデルを学習させながら理解できます。数式は後半にまとめてあるので、コードだけ動かして雰囲気をつかむだけでもOKです。

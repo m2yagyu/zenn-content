@@ -3,7 +3,7 @@
 #   python3 -m venv .venv
 #   .venv/bin/python -m pip install -r requirements.txt
 #
-# 直接インストールしたのは torch / scikit-learn / matplotlib の3つだけで、
+# 直接インストールしたのは torch / torchvision / scikit-learn / matplotlib の4つだけで、
 # 残りはその依存として入ったもの（sympy, numpy, scipy など）。
 # .venv は .gitignore 済み。消しても このファイルから作り直せる。
 contourpy==1.3.3
@@ -31,4 +31,5 @@ six==1.17.0
 sympy==1.14.0
 threadpoolctl==3.6.0
 torch==2.13.0
+torchvision==0.28.0
 typing_extensions==4.16.0

@@ -2,13 +2,13 @@
 title: "LLMのtemperatureは本当に温度だった。最新のClaudeからは消えていたけれど"
 emoji: "🌡️"
 type: "tech" # tech: 技術記事 / idea: アイデア
-topics: ["chatgpt", "生成ai", "machinelearning", "初心者", "python"]
+topics: ["生成ai", "chatgpt", "claude", "初心者", "物理"]
 published: true
 ---
 
 この記事を読むと、ChatGPTやClaudeのAPIで指定する`temperature`が、統計力学の「温度」と数式レベルで同じものであることを、自分の手で測って確認できるようになります。GPUは不要で、前半はnumpyだけ、後半も152Mパラメータの小さなモデルをCPUで動かすだけです。
 
-LLMが次の単語を確率的に選んでいるという仕組みと、`temperature`がその確率を変えるつまみであることは、[はじめてのAIチャットボットを作る記事](https://zenn.dev/m2yagyu/articles/first-ai-chatbot-colab)で扱いました。softmaxの式もそこで一度出しています。**この記事はその続きです。** あの式が統計力学のどこから来たのかを、測りながら辿ります。前提知識は不要で、必要なことは改めて書きます。
+LLMが次の単語を確率的に選んでいるという仕組みと、`temperature`がその確率を変えるつまみであることは、[Colabでチャットボットを作る記事](https://zenn.dev/m2yagyu/articles/first-ai-chatbot-colab)で扱いました。softmaxの式もそこで一度出しています。**この記事はその続きです。** あの式が統計力学のどこから来たのかを、測りながら辿ります。前提知識は不要で、必要なことは改めて書きます。
 
 `temperature`を上げると出力が多様になる、というのは使っていれば分かります。この記事で確かめたいのはその先で、**なぜ上げると多様になるのか**、そして**その「温度」とは何の温度なのか**です。結論を先に言うと、比喩ではなく、統計力学のボルツマン分布の温度そのものです。
 

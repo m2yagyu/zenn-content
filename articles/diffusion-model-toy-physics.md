@@ -2,7 +2,7 @@
 title: "拡散モデルの中身を覗いてみる：物理の「拡散」から生成AIを理解する"
 emoji: "🌫️"
 type: "tech" # tech: 技術記事 / idea: アイデア
-topics: ["machinelearning", "python", "diffusion", "初心者", "物理"]
+topics: ["生成ai", "machinelearning", "初心者", "diffusion", "物理"]
 published: true
 ---
 

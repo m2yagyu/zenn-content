@@ -1,12 +1,12 @@
 ---
-title: "文章から絵を描いてもらう。ブラウザだけで作る、はじめての画像生成AI"
+title: "Hugging Face推論APIで動かすtext-to-image：FLUX.1-schnellをColabのセル3つで"
 emoji: "🎨"
 type: "tech" # tech: 技術記事 / idea: アイデア
-topics: ["colab", "python", "ai", "初心者", "huggingface"]
+topics: ["生成ai", "machinelearning", "diffusion", "huggingface", "colab"]
 published: true
 ---
 
-この記事を読むと、日本語や英語の文章を書くだけで、AIに自分だけの画像を描いてもらえるようになります。プログラミング経験・環境構築・課金は一切不要です。
+この記事を読むと、Google Colabのセル3つだけで、Hugging Faceの推論API経由でFLUX.1-schnellを呼び出し、テキストから画像を生成できるようになります。GPUの確保もモデルのダウンロードも課金も不要で、生成パラメータを変えながら挙動を確かめられます。
 
 ## さっそく動かしてみよう
 

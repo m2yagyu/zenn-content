@@ -1,0 +1,7 @@
+Attentionの `/ math.sqrt(d_k)`、なぜ割るのか気になったまま進んだ人へ。
+
+あれ、温度です。比喩ではなく統計力学の温度そのものでした。
+
+softmax(QKᵀ/√d)V は、Hopfieldの連想記憶の想起則と誤差ちょうど0で一致します。numpyで確かめられます。
+
+https://zenn.dev/m2yagyu/articles/attention-hopfield-associative-memory

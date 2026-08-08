@@ -8,12 +8,7 @@ published: false
 
 この記事を読むと、Transformerの `softmax(QKᵀ/√d)V` が「連想記憶から記憶を思い出す計算」と一字一句同じ式であることを、自分の手で確かめられます。GPUは不要で、前半はnumpyだけ、後半も150Mパラメータの小さなモデルをCPUで動かすだけです。
 
-載せているコードはすべて図の出力までセットになっているので、コピペすると記事と同じ図がそのまま手元に出ます。最初に一度だけ、numpyとmatplotlibに加えて日本語表示用のパッケージを入れておいてください（グラフのラベルが豆腐になるのを防ぐためのものです）。
-
-```bash
-pip install numpy matplotlib matplotlib-fontja
-# Google Colab で実行する場合は  !pip install matplotlib-fontja
-```
+載せているコードはすべて図の出力までセットになっているので、上から順にコピペすると記事と同じ図がそのまま手元に出ます。グラフの日本語表示に必要なパッケージは最初のセルが自動で入れるので、事前の準備は要りません（Google Colabでもそのまま動きます）。
 
 結論を先に言うと、Attentionの式にある `/ math.sqrt(d_k)` の `√d` は**温度**です。しかも比喩ではなく、[前回の記事](https://zenn.dev/m2yagyu/articles/llm-temperature-boltzmann)で扱った統計力学の温度と同じものです。そしてその温度が支配しているのは、Attentionが「記憶をひとつだけ思い出すか、複数を混ぜて思い出すか」という切り替えでした。
 
@@ -76,7 +71,15 @@ Attentionのことはいったん忘れて、連想記憶をゼロから作っ�
 ```python
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib_fontja  # noqa: F401  importするだけでグラフの日本語が文字化けしなくなる
+
+# グラフの日本語が豆腐にならないようにする。無ければこの場で入れる（初回のみ）
+try:
+    import matplotlib_fontja  # noqa: F401
+except ModuleNotFoundError:
+    import subprocess
+    import sys
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "-q", "matplotlib-fontja"])
+    import matplotlib_fontja  # noqa: F401
 
 BLUE, ORANGE, GRAY = "#3b82f6", "#ef7d54", "#8a8a8a"
 
@@ -451,8 +454,9 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 
 MODEL = "llm-jp/llm-jp-3-150m"
 tok = AutoTokenizer.from_pretrained(MODEL)
-model = AutoModelForCausalLM.from_pretrained(
-    MODEL, attn_implementation="eager", dtype=torch.float32)  # 重みを見るのでeager
+# attention の重みを取り出したいので eager 実装を指定する
+model = AutoModelForCausalLM.from_pretrained(MODEL, attn_implementation="eager")
+model = model.float()   # bfloat16のままだとnumpyに変換できないのでfloat32にする
 model.eval()
 
 text = "日本の首都は東京です。日本で一番高い山は富士山です。日本の首都は"

@@ -93,15 +93,24 @@ AIの原理を「やさしいのに正確」に伝えるコンテンツを継続
 - 拡散過程の可視化、分布の変化、アーキテクチャ図は
   matplotlib / mermaid で生成する
 - **日本語ラベルは `matplotlib-fontja` を使う**（2026-08-08 改定）。
-  `import matplotlib_fontja` の1行でフォントが同梱のものに切り替わる。
   `plt.rcParams["font.family"] = "Hiragino Sans"` の直接指定はmacOSでしか動かず、
-  読者がColabで実行すると豆腐になる。読者に渡すコードには必ずこれを入れる
+  読者がColabで実行すると豆腐になる。
+- **依存の導入は、それを使う最初のコードブロックの中で完結させる**（2026-08-08 追加）。
+  インストール手順を本文や別のブロックに書くと、読者は最初のコードセルだけを
+  コピーして `ModuleNotFoundError` に当たる（実際に起きた）。
+  `!pip` はマジックコマンドで `.py` でも検証スクリプトでも動かないので使わない
   ```python
-  import matplotlib.pyplot as plt
-  import matplotlib_fontja  # noqa: F401  これだけで日本語が文字化けしない
+  try:
+      import matplotlib_fontja  # noqa: F401
+  except ModuleNotFoundError:
+      import subprocess, sys
+      subprocess.check_call([sys.executable, "-m", "pip", "install", "-q", "matplotlib-fontja"])
+      import matplotlib_fontja  # noqa: F401
   ```
-  記事の冒頭で `pip install matplotlib-fontja` を案内する
-  （Colab向けに `!pip install matplotlib-fontja` も併記する）
+- **ライブラリのバージョン差で壊れる書き方を避ける**。
+  たとえば `from_pretrained(..., dtype=...)` は新しいtransformersの書き方なので、
+  Colabのバージョン次第で動かない。`model.float()` のように
+  素のtorchで書ける方法があればそちらを選ぶ
 
 ## 公開フロー
 - Zennのフロントマター（title, emoji, type, topics, published）を整える

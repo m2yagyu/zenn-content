@@ -60,15 +60,12 @@ python3 scripts/zenn_analyze.py mine     # 自分の既存記事がどの型に�
   # images/ で実行すると記事用の図もそのまま更新される
   cd images && ../.venv/bin/python ../scripts/verify_article_code.py ../articles/<slug>.md
   ```
-- matplotlibの日本語フォントは、環境にあるものを1つ選ぶ書き方にする。
-  `font.family` にリストを渡すと存在しないフォントぶんだけ findfont 警告が大量に出る
+- matplotlibの日本語ラベルは `matplotlib-fontja` を使う（`import` の1行だけで済む）。
+  `plt.rcParams["font.family"] = "Hiragino Sans"` はmacOSでしか動かないので、
+  読者がColabで実行すると豆腐になる。`font.family` にフォント名のリストを渡す方法も、
+  存在しないフォントぶんだけ findfont 警告が大量に出るので使わない
   ```python
-  from matplotlib import font_manager
-  _available = {f.name for f in font_manager.fontManager.ttflist}
-  for _font in ["Hiragino Sans", "IPAexGothic", "Noto Sans CJK JP"]:
-      if _font in _available:
-          plt.rcParams["font.family"] = _font
-          break
+  import matplotlib_fontja  # noqa: F401
   ```
 - 検証にはこのリポジトリ直下の `.venv`(プロジェクト専用の仮想環境)を使う。使い捨てにせず、次回の記事でも再利用する。システムのPython環境には絶対にインストールしない(この方針は全プロジェクト共通のため `~/.claude/CLAUDE.md` にも記載してある)
   ```bash

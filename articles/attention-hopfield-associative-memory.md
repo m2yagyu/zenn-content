@@ -8,7 +8,12 @@ published: false
 
 この記事を読むと、Transformerの `softmax(QKᵀ/√d)V` が「連想記憶から記憶を思い出す計算」と一字一句同じ式であることを、自分の手で確かめられます。GPUは不要で、前半はnumpyだけ、後半も150Mパラメータの小さなモデルをCPUで動かすだけです。
 
-載せているコードはすべて図の出力までセットになっているので、コピペすると記事と同じ図がそのまま手元に出ます。
+載せているコードはすべて図の出力までセットになっているので、コピペすると記事と同じ図がそのまま手元に出ます。最初に一度だけ、numpyとmatplotlibに加えて日本語表示用のパッケージを入れておいてください（グラフのラベルが豆腐になるのを防ぐためのものです）。
+
+```bash
+pip install numpy matplotlib matplotlib-fontja
+# Google Colab で実行する場合は  !pip install matplotlib-fontja
+```
 
 結論を先に言うと、Attentionの式にある `/ math.sqrt(d_k)` の `√d` は**温度**です。しかも比喩ではなく、[前回の記事](https://zenn.dev/m2yagyu/articles/llm-temperature-boltzmann)で扱った統計力学の温度と同じものです。そしてその温度が支配しているのは、Attentionが「記憶をひとつだけ思い出すか、複数を混ぜて思い出すか」という切り替えでした。
 
@@ -71,15 +76,7 @@ Attentionのことはいったん忘れて、連想記憶をゼロから作っ�
 ```python
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib import font_manager
-
-# 日本語ラベル用に、環境にあるフォントを1つ選ぶ（無ければ英字フォントのまま）
-# Colabの場合は先に  !pip install japanize-matplotlib  して import japanize_matplotlib
-_available = {f.name for f in font_manager.fontManager.ttflist}
-for _font in ["Hiragino Sans", "IPAexGothic", "Noto Sans CJK JP", "TakaoGothic", "MS Gothic"]:
-    if _font in _available:
-        plt.rcParams["font.family"] = _font
-        break
+import matplotlib_fontja  # noqa: F401  importするだけでグラフの日本語が文字化けしなくなる
 
 BLUE, ORANGE, GRAY = "#3b82f6", "#ef7d54", "#8a8a8a"
 

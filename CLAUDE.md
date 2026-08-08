@@ -92,6 +92,16 @@ AIの原理を「やさしいのに正確」に伝えるコンテンツを継続
 ## 図解
 - 拡散過程の可視化、分布の変化、アーキテクチャ図は
   matplotlib / mermaid で生成する
+- **日本語ラベルは `matplotlib-fontja` を使う**（2026-08-08 改定）。
+  `import matplotlib_fontja` の1行でフォントが同梱のものに切り替わる。
+  `plt.rcParams["font.family"] = "Hiragino Sans"` の直接指定はmacOSでしか動かず、
+  読者がColabで実行すると豆腐になる。読者に渡すコードには必ずこれを入れる
+  ```python
+  import matplotlib.pyplot as plt
+  import matplotlib_fontja  # noqa: F401  これだけで日本語が文字化けしない
+  ```
+  記事の冒頭で `pip install matplotlib-fontja` を案内する
+  （Colab向けに `!pip install matplotlib-fontja` も併記する）
 
 ## 公開フロー
 - Zennのフロントマター（title, emoji, type, topics, published）を整える

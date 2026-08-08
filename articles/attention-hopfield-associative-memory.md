@@ -20,7 +20,7 @@ LLMは文章を左から読み、次の1語を予測します。たとえばこ�
 
 > 日本の首都は東京です。日本で一番高い山は富士山です。日本の首都は
 
-最後の「は」の次に来る語を当てたい。人間なら、前half分に出てきた「東京」を思い出して答えます。このとき頭の中でやっているのは、**いま必要としている情報を手がかりに、前に出てきた語の中から関係あるものを探す**という作業です。
+最後の「は」の次に来る語を当てたい。人間なら、前に出てきた「東京」を思い出して答えます。このとき頭の中でやっているのは、**いま必要としている情報を手がかりに、前に出てきた語の中から関係あるものを探す**という作業です。
 
 Attentionはこれを3つのベクトルで表現します。
 
@@ -135,6 +135,17 @@ plt.savefig("attention-hopfield-recall.png", bbox_inches="tight", dpi=150)
 plt.show()
 ```
 
+長く見えますが、想起をやっているのは次の2行だけです。
+
+```python:抜粋
+w = softmax(beta * (X.T @ xi))   # ①② 全記憶との相性 → 重み
+recalled = X @ w                 # ③ その重みで記憶を平均
+```
+
+`X.T @ xi` が、手がかりと6つの記憶すべての内積を一度に計算しています。残りの行は記憶を作る準備と作図です。
+
+なお `make_cue` でノイズを**相対的な大きさ**として定義しているのは、ここを間違えると実験が壊れるからです。単位ノルムに揃えた記憶に `rng.normal` をそのまま足すと、1成分あたりのノイズが信号の $\sqrt{d}$ 倍になり、手がかりが実質ただのノイズになってしまいます。
+
 実行するとこうなります。
 
 ```
@@ -220,6 +231,15 @@ plt.savefig("attention-hopfield-equivalence.png", bbox_inches="tight", dpi=150)
 plt.show()
 ```
 
+比べているのはこの2行です。
+
+```python:抜粋
+recalled_A = M @ softmax(beta * (M.T @ cue))              # 想起則
+out_B = (softmax_rows(Q @ K.T / np.sqrt(64)) @ V)[0]      # attention
+```
+
+`Q, K, V = cue[None, :], M.T, M.T` と置いた行が要で、**キーとバリューに同じ記憶行列 `M` を入れています**。ここを別々にすると一致しません。そして `/ np.sqrt(64)` が (A) の `beta` と同じ値になっています。この2つを揃えると、残りの演算は完全に同じ順序になります。
+
 ```
 最大絶対誤差: 0.0
 一致: True
@@ -288,6 +308,15 @@ plt.tight_layout()
 plt.savefig("attention-hopfield-sqrtd.png", bbox_inches="tight", dpi=150)
 plt.show()
 ```
+
+比較しているのは、同じスコア `sc` に対する2つのsoftmaxです。
+
+```python:抜粋
+a_.append(softmax(sc / np.sqrt(dd)).max())   # √d で割る
+b_.append(softmax(sc).max())                 # 割らない
+```
+
+違いは `/ np.sqrt(dd)` の有無だけで、入力するスコアも記憶の数（16本）も同じにしてあります。200回の平均をとっているのは、1回だけだと引いた乱数によって最大重みが大きく振れて、$d$ 依存の傾向が読み取れなくなるためです。
 
 ```
 d=   16  内積の標準偏差=    4.0  最大重み(÷√d有)=0.240  (÷√d無)=0.671
@@ -366,6 +395,16 @@ plt.savefig("attention-hopfield-beta-curve.png", bbox_inches="tight", dpi=150)
 plt.show()
 ```
 
+要は `softmax(b * (X.T @ xi))` の `b` を差し替えているだけで、記憶 `X` も手がかり `xi` も最初のコードのまま使い回しています。変えたのは温度だけです。
+
+もう一つの要点は `eff` です。
+
+```python:抜粋
+return np.exp(-(w * np.log(w)).sum())    # exp(エントロピー)
+```
+
+`-(w * np.log(w)).sum()` がエントロピー $H$ で、その指数をとっています。前回の記事で出てきたperplexityと同じ量で、確率が1つに集中していれば1、均等にばらけていれば選択肢の数に一致します。
+
 ```
 β= 0.5 (T=2.00)  最大重み=0.242  有効記憶数=5.88
 β= 2.0 (T=0.50)  最大重み=0.556  有効記憶数=4.00
@@ -426,6 +465,14 @@ plt.tight_layout()
 plt.savefig("attention-hopfield-capacity.png", bbox_inches="tight", dpi=150)
 plt.show()
 ```
+
+判定しているのはこの1行です。
+
+```python:抜粋
+ok += int(softmax(100.0 * (Xc.T @ cue)).argmax() == t)
+```
+
+想起した結果が元の記憶と近いかではなく、**最も重みが大きかった記憶の番号 `argmax` が、崩す前の番号 `t` と一致したか**で数えています。曖昧さの残らない基準にしたかったためです。`make_cue(..., 2.0, rng)` の `2.0` が、記憶の2倍の大きさのノイズを乗せるという条件を作っています。
 
 ```
 N=    8  正解率  99.5%  (でたらめなら 12.500%)
@@ -519,6 +566,16 @@ for l, h in order[:10]:
 print(f"  → 上位10個のうち {sum(1 for l,h in order[:10] if Wmap[l,h].argmax()==0)} 個が先頭トークン")
 ```
 
+このコードの要は次の1行です。
+
+```python:抜粋
+w = a[0, :, -1, :].float().numpy()      # (ヘッド, トークン) 最終トークンの行
+```
+
+`out.attentions` は層ごとに `(バッチ, ヘッド, 問い合わせ側, 参照側)` の4次元で入っています。`-1` で**最終トークンの行だけ**を取り出しているので、「次の1語を予測しようとしている今、どの語を見ているか」が得られます。この行が、自作の連想記憶でいう `softmax(beta * (X.T @ xi))` の中身にあたります。
+
+`attn_implementation="eager"` を指定しているのは、高速化された実装だと重みが返らないためです。`model.float()` は、このモデルの既定がbfloat16でnumpyに変換できないので挟んでいます。
+
 ```
 有効注目数: 最小 1.04 / 中央値 5.61 / 最大 12.43  (全17トークン)
 ```
@@ -563,6 +620,15 @@ plt.tight_layout()
 plt.savefig("attention-hopfield-layer-temp.png", bbox_inches="tight", dpi=150)
 plt.show()
 ```
+
+ここでは `out.attentions` の完成品ではなく、**softmaxに入る前のスコア**を見たいので、$Q$ と $K$ を自分で作り直しています。
+
+```python:抜粋
+x = model.model.layers[layer].input_layernorm(hs[layer])
+q = blk.q_proj(x)[0].view(T, -1, d_head).transpose(0, 1)
+```
+
+`input_layernorm` を通しているのが要点です。`q_proj` に入るのは正規化を済ませた後の値なので、`hidden_states` をそのまま渡すとスケールが違い、分散が実際とは別の値になります（最初これを忘れて、第0層の標準偏差が0.00という明らかにおかしな値が出ました）。
 
 ```
 第 0層: 割る前  27.73 → √d(8)で割った後  3.47
@@ -636,6 +702,15 @@ plt.tight_layout()
 plt.savefig("attention-hopfield-energy.png", bbox_inches="tight", dpi=150)
 plt.show()
 ```
+
+エネルギーを計算しているのはこの2行で、上の式をそのまま書き下したものです。
+
+```python:抜粋
+lse = (np.log(np.exp(s - s.max(0)).sum(0)) + s.max(0)) / b   # 自由エネルギー
+E = (-lse + 0.5 * (Z ** 2).sum(0)).reshape(GX.shape)
+```
+
+`s.max(0)` を引いてから足し直しているのは、$e^{\beta x}$ が桁あふれするのを避けるためで、値は変わりません。第2項の `0.5 * (Z ** 2).sum(0)` が $\frac{1}{2}\|\xi\|^2$ で、これが無いと谷が無限に深くなってしまいます。
 
 ![エネルギーの地形](/images/attention-hopfield-energy.png)
 

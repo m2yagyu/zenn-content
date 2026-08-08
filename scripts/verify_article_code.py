@@ -8,8 +8,12 @@ images/ で実行すれば記事用の図がそのまま更新される。
   cd images && python3 ../scripts/verify_article_code.py ../articles/<slug>.md
 
 照合のしかた:
-  ```python ... ``` の直後にある ``` ... ``` を「記事に載せた出力」とみなす。
+  ```python ... ``` を実行対象とし、その後ろに現れる最初の「言語指定なしの ``` ブロック」
+  を、そのコードの出力として載せたものとみなす（次の ```python が来る前まで探す）。
+  あいだに解説文や ```python:抜粋 を挟んでも対応づけは崩れない。
   出力に "..." を含む場合（一部を省略して載せている場合）は前方一致で判定する。
+
+  補足: 記事に載せる抜粋コードは ```python:抜粋 と書く。断片なので実行対象から外れる。
 """
 import re, sys, io, os, contextlib
 
@@ -22,14 +26,28 @@ def main():
     import matplotlib
     matplotlib.use("Agg")          # 画面を出さずに savefig だけ効かせる
 
-    blocks = re.findall(r"```python\n(.*?)```", src, re.S)
-    expected = re.findall(
-        r"```python\n.*?```\n\n(?:[^\n`]*\n\n)?```\n(.*?)```", src, re.S)
+    # 文書中のフェンス付きブロックを、言語指定つきで出現順に並べる
+    fences = [(m.group(1), m.group(2))
+              for m in re.finditer(r"```(\S*)\n(.*?)```", src, re.S)]
+
+    blocks, expected = [], []
+    for i, (lang, body) in enumerate(fences):
+        if lang != "python":            # python:抜粋 / mermaid / bash などは実行しない
+            continue
+        blocks.append(body)
+        out = None
+        for lang2, body2 in fences[i + 1:]:
+            if lang2 == "python":       # 次のコードに達したら、その手前までが対象
+                break
+            if lang2 == "":             # 言語指定なし = 実行結果として載せたもの
+                out = body2
+                break
+        expected.append(out)
 
     print(f"{os.path.basename(path)}: コードブロック {len(blocks)} 個 / "
-          f"記事に載せた出力 {len(expected)} 個\n")
+          f"記事に載せた出力 {sum(1 for e in expected if e is not None)} 個\n")
 
-    g, ei, ng = {}, 0, 0
+    g, ng = {}, 0
     for i, b in enumerate(blocks):
         buf = io.StringIO()
         try:
@@ -43,11 +61,11 @@ def main():
         if not out:
             print(f"  ブロック[{i}] 出力なし（作図のみ）")
             continue
-        if ei >= len(expected):
-            print(f"  ブロック[{i}] 記事に対応する出力が見つからない")
+        if expected[i] is None:
+            print(f"  ブロック[{i}] 出力があるのに記事に載せていない")
             ng += 1
             continue
-        exp = expected[ei].rstrip(); ei += 1
+        exp = expected[i].rstrip()
         head = exp.split("...")[0].strip()
         ok = out.strip() == exp.strip() or (head and out.strip().startswith(head))
         print(f"  ブロック[{i}] 記載と一致: {'YES' if ok else 'NO'}")

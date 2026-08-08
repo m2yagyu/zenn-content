@@ -6,21 +6,45 @@ topics: ["deeplearning", "生成ai", "llm", "物理", "machinelearning"]
 published: false
 ---
 
-この記事を読むと、Transformerの `softmax(QKᵀ/√d)V` が「連想記憶から記憶を思い出す計算」と**一字一句同じ式**であることを、自分の手で確かめられます。GPUは不要で、前半はnumpyだけ、後半も150Mパラメータの小さなモデルをCPUで動かすだけです。
+この記事を読むと、Transformerの `softmax(QKᵀ/√d)V` が「連想記憶から記憶を思い出す計算」と一字一句同じ式であることを、自分の手で確かめられます。GPUは不要で、前半はnumpyだけ、後半も150Mパラメータの小さなモデルをCPUで動かすだけです。
 
-Attentionの実装を読んだことがある人なら、あの `/ math.sqrt(d_k)` が気になったことがあるはずです。なぜ割るのか。なぜ `d` ではなく `√d` なのか。「スケーリングのため」と書かれているのを読んで、わかったようなわからないような気持ちになったまま先へ進んだ人は多いと思います。
+載せているコードはすべて図の出力までセットになっているので、コピペすると記事と同じ図がそのまま手元に出ます。
 
-この記事の結論を先に言うと、**あの `√d` は温度です**。しかも比喩ではなく、[前回の記事](https://zenn.dev/m2yagyu/articles/llm-temperature-boltzmann)で扱った統計力学の温度と同じものです。そしてその温度が支配しているのは、Attentionが「記憶をひとつだけ思い出すか、複数を混ぜて思い出すか」という切り替えでした。
+結論を先に言うと、Attentionの式にある `/ math.sqrt(d_k)` の `√d` は**温度**です。しかも比喩ではなく、[前回の記事](https://zenn.dev/m2yagyu/articles/llm-temperature-boltzmann)で扱った統計力学の温度と同じものです。そしてその温度が支配しているのは、Attentionが「記憶をひとつだけ思い出すか、複数を混ぜて思い出すか」という切り替えでした。
+
+## Attentionを知らない人のための3分の復習
+
+Attentionの中身をまだ触ったことがない人向けに、必要な分だけ先に説明します。すでに実装を読んだことがある人はこの節を飛ばして構いません。
+
+LLMは文章を左から読み、次の1語を予測します。たとえばこういう文を考えます。
+
+> 日本の首都は東京です。日本で一番高い山は富士山です。日本の首都は
+
+最後の「は」の次に来る語を当てたい。人間なら、前half分に出てきた「東京」を思い出して答えます。このとき頭の中でやっているのは、**いま必要としている情報を手がかりに、前に出てきた語の中から関係あるものを探す**という作業です。
+
+Attentionはこれを3つのベクトルで表現します。
+
+| 名前 | 役割 | さっきの例でいうと |
+|---|---|---|
+| **クエリ** $q$ | いま探しているもの | 「日本の首都、といえば？」 |
+| **キー** $k$ | 各語が掲げている見出し | 「東京」は"首都に関する語"という見出しを持つ |
+| **バリュー** $v$ | 各語が実際に渡す中身 | 「東京」という語の情報そのもの |
+
+クエリと各キーの内積をとると「その語がどれくらい関係あるか」の点数が出ます。点数をsoftmaxで重みに変え、その重みでバリューを平均する。これがAttentionの出力です。
+
+重要なのは、$q, k, v$ が固定のものではなく、**各語の埋め込みベクトルに、学習で決まった行列 $W_Q, W_K, W_V$ を掛けて作られる**という点です。「何を探すか」「何を見出しに掲げるか」をモデルが自分で学習します。
+
+Transformer全体の構造（複数ヘッド、複数層、位置エンコーディングなど）はこの記事では扱いません。必要なのは上の3つだけです。もっと丁寧な入門は [The Illustrated Transformer](https://jalammar.github.io/illustrated-transformer/) や原論文 [Attention Is All You Need](https://arxiv.org/abs/1706.03762) が読みやすいです。
 
 ## そもそもAttentionは何を計算しているのか？
 
-まず式を確認します。よく見る形はこれです。
+式で書くとこうなります。
 
 $$
 \mathrm{Attention}(Q,K,V) = \mathrm{softmax}\!\left(\frac{QK^\top}{\sqrt{d}}\right)V
 $$
 
-記号が多いので、いったん1つのクエリだけに絞ります。クエリ $q$ が1本、キーとバリューが $N$ 本ずつあるとすると、やっていることは3ステップです。
+クエリを1本だけに絞ると、やっていることは3ステップです。
 
 ```mermaid
 graph TD
@@ -28,7 +52,7 @@ graph TD
     B --> C["③ その重みで、N本のバリュー v_i を平均する<br/>= 重み付き平均が出力になる"]
 ```
 
-つまりAttentionは**「問い合わせに近いものほど重く数える、重み付き平均」**です。ここまでは実装を読めばわかる話です。
+つまりAttentionは「*問い合わせに近いものほど重く数える、重み付き平均*」です。ここまでは実装を読めばわかる話です。
 
 問題は、この計算に名前がついていることに気づきにくい点です。「手がかりを渡すと、それに近いものを引っ張り出してくる」という装置は、機械学習より40年前から物理の世界にありました。**連想記憶**です。
 
@@ -42,14 +66,28 @@ Attentionのことはいったん忘れて、連想記憶をゼロから作っ�
 
 人間でいえば「ぼんやりした思い出しかけの記憶から、元の出来事を思い出す」に当たります。
 
-素直に書くとこうなります。記憶を並べた行列 $X$（1列が1つの記憶）と、手がかり $\xi$ を用意して、**「手がかりと似ている記憶ほど重く数えて、記憶たちを平均する」**だけです。
+素直に書くとこうなります。記憶を並べた行列 $X$（1列が1つの記憶）と手がかり $\xi$ を用意して、「*手がかりと似ている記憶ほど重く数えて、記憶たちを平均する*」だけです。
 
 ```python
 import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib import font_manager
+
+# 日本語ラベル用に、環境にあるフォントを1つ選ぶ（無ければ英字フォントのまま）
+# Colabの場合は先に  !pip install japanize-matplotlib  して import japanize_matplotlib
+_available = {f.name for f in font_manager.fontManager.ttflist}
+for _font in ["Hiragino Sans", "IPAexGothic", "Noto Sans CJK JP", "TakaoGothic", "MS Gothic"]:
+    if _font in _available:
+        plt.rcParams["font.family"] = _font
+        break
+
+BLUE, ORANGE, GRAY = "#3b82f6", "#ef7d54", "#8a8a8a"
+
 
 def softmax(z):
     z = z - z.max()
     return np.exp(z) / np.exp(z).sum()
+
 
 def make_cue(x, sigma, rng):
     """記憶 x に、x の大きさに対して相対的に sigma 倍のノイズを乗せた手がかりを作る"""
@@ -57,6 +95,7 @@ def make_cue(x, sigma, rng):
     n /= np.linalg.norm(n)
     c = x + sigma * n
     return c / np.linalg.norm(c)
+
 
 rng = np.random.default_rng(0)
 d, N = 64, 6                                    # 特徴の次元 / 記憶の数
@@ -72,6 +111,28 @@ recalled = X @ w                                 # ③ 重み付き平均
 
 print("選ばれた記憶:", w.argmax(), " 重み:", w.max().round(3))
 print("元の記憶との差:", np.abs(recalled - X[:, target]).max().round(4))
+
+# ---- 作図 ----
+fig, ax = plt.subplots(1, 4, figsize=(14.5, 3.2),
+                       gridspec_kw={"width_ratios": [1.9, 2.2, 1.0, 2.2]})
+ax[0].imshow(X.T, aspect="auto", cmap="RdBu_r", vmin=-.4, vmax=.4)
+ax[0].set(title="① 6つの記憶を保存する", ylabel="記憶の番号", xlabel="特徴の次元")
+ax[1].plot(X[:, target], color=BLUE, lw=1.6, label=f"本物の記憶{target}")
+ax[1].plot(xi, color=GRAY, lw=1.1, label="ノイズを乗せた手がかり")
+ax[1].set(title="② 崩れた手がかりを渡す", xlabel="特徴の次元")
+ax[1].legend(fontsize=8.5)
+ax[2].barh(range(N), w, color=[ORANGE if i == target else BLUE for i in range(N)])
+ax[2].set(title="③ 想起の重み", xlim=(0, 1), yticks=range(N), ylabel="記憶の番号")
+ax[2].invert_yaxis()
+ax[3].plot(X[:, target], color=BLUE, lw=2.4, label=f"本物の記憶{target}")
+ax[3].plot(recalled, color=ORANGE, lw=1.2, ls="--", label="想起した結果")
+ax[3].set(title="④ 元の記憶が戻ってきた", xlabel="特徴の次元")
+ax[3].legend(fontsize=8.5)
+for a in ax[1:]:
+    a.grid(alpha=.3)
+plt.tight_layout()
+plt.savefig("attention-hopfield-recall.png", bbox_inches="tight", dpi=150)
+plt.show()
 ```
 
 実行するとこうなります。
@@ -125,24 +186,46 @@ cue = M[:, 3] + 0.6 * rng.normal(size=64)
 
 # (A) 連想記憶の想起則
 beta = 1.0 / np.sqrt(64)
-recalled = M @ softmax(beta * (M.T @ cue))
+recalled_A = M @ softmax(beta * (M.T @ cue))
+
 
 # (B) Transformerのattention（K=V=記憶パターン, Q=手がかり）
 def softmax_rows(z):
     z = z - z.max(axis=-1, keepdims=True)
     return np.exp(z) / np.exp(z).sum(axis=-1, keepdims=True)
 
-Q, K, V = cue[None, :], M.T, M.T
-out = softmax_rows(Q @ K.T / np.sqrt(64)) @ V
 
-print("最大絶対誤差:", np.abs(recalled - out[0]).max())
-print("一致:", np.allclose(recalled, out[0]))
+Q, K, V = cue[None, :], M.T, M.T
+out_B = (softmax_rows(Q @ K.T / np.sqrt(64)) @ V)[0]
+
+print("最大絶対誤差:", np.abs(recalled_A - out_B).max())
+print("一致:", np.allclose(recalled_A, out_B))
+
+# ---- 作図 ----
+fig, ax = plt.subplots(1, 2, figsize=(11.5, 3.5),
+                       gridspec_kw={"width_ratios": [2.2, 1]})
+ax[0].plot(recalled_A, color=BLUE, lw=3.2, label="(A) 連想記憶の想起則")
+ax[0].plot(out_B, color=ORANGE, lw=1.2, ls="--", label="(B) Attentionの式")
+ax[0].set(title="2つの式の出力は完全に重なる", xlabel="特徴の次元", ylabel="出力の値")
+ax[0].legend(fontsize=9)
+attn = softmax_rows(Q @ K.T / np.sqrt(64))[0]      # ②で作られた重み
+ax[1].bar(range(len(attn)), attn,
+          color=[ORANGE if i == attn.argmax() else BLUE for i in range(len(attn))])
+ax[1].set(title=f"このとき使われた重み（差の最大 {np.abs(recalled_A - out_B).max():.0f}）",
+          xlabel="記憶の番号", ylabel="重み", ylim=(0, 1))
+for a in ax:
+    a.grid(alpha=.3)
+plt.tight_layout()
+plt.savefig("attention-hopfield-equivalence.png", bbox_inches="tight", dpi=150)
+plt.show()
 ```
 
 ```
 最大絶対誤差: 0.0
 一致: True
 ```
+
+![2つの式の一致](/images/attention-hopfield-equivalence.png)
 
 誤差は $10^{-16}$ 程度ではなく、**ちょうど0**です。近似的に似ているのではなく、同じ順序で同じ演算をしているので当然そうなります。
 
@@ -163,23 +246,47 @@ $d$ を大きくすると点数が勝手に大きくなり、softmaxが勝手に
 ```python
 rng = np.random.default_rng(2)
 
-for dd in [16, 64, 256, 1024, 4096]:
+dims = [16, 64, 256, 1024, 4096]
+stds, with_s, without_s = [], [], []
+
+for dd in dims:
     # 内積そのものの散らばり
     q = rng.normal(size=(3000, dd))
     k = rng.normal(size=(3000, dd))
-    std = (q * k).sum(1).std()
+    stds.append((q * k).sum(1).std())
 
     # 16本のキーに対する注意重みの最大値。1回だと振れるので200回の平均をとる
-    with_sqrt, without_sqrt = [], []
+    a_, b_ = [], []
     for _ in range(200):
-        K = rng.normal(size=(16, dd))
-        sc = K @ rng.normal(size=dd)
-        with_sqrt.append(softmax(sc / np.sqrt(dd)).max())
-        without_sqrt.append(softmax(sc).max())
+        Kk = rng.normal(size=(16, dd))
+        sc = Kk @ rng.normal(size=dd)
+        a_.append(softmax(sc / np.sqrt(dd)).max())
+        b_.append(softmax(sc).max())
+    with_s.append(np.mean(a_))
+    without_s.append(np.mean(b_))
 
-    print(f"d={dd:5d}  内積の標準偏差={std:7.1f}  "
-          f"最大重み(÷√d有)={np.mean(with_sqrt):.3f}  "
-          f"(÷√d無)={np.mean(without_sqrt):.3f}")
+    print(f"d={dd:5d}  内積の標準偏差={stds[-1]:7.1f}  "
+          f"最大重み(÷√d有)={with_s[-1]:.3f}  (÷√d無)={without_s[-1]:.3f}")
+
+# ---- 作図 ----
+fig, ax = plt.subplots(1, 2, figsize=(11, 3.8))
+ax[0].loglog(dims, stds, "o-", color=ORANGE, label="Q·K をそのまま")
+ax[0].loglog(dims, np.array(stds) / np.sqrt(dims), "o-", color=BLUE, label="√d で割った後")
+ax[0].set(title="内積の散らばりは d とともに育つ",
+          xlabel="ヘッドあたりの次元 d", ylabel="内積の標準偏差")
+ax[0].legend(fontsize=9)
+ax[1].semilogx(dims, without_s, "o-", color=ORANGE, label="√d で割らない")
+ax[1].semilogx(dims, with_s, "o-", color=BLUE, label="√d で割る")
+ax[1].axhline(1 / 16, color=GRAY, ls=":", lw=1)
+ax[1].text(20, 1 / 16 + .03, "16本に均等に注目した場合", fontsize=8.5, color=GRAY)
+ax[1].set(title="割らないと注意が1点に寄っていく", xlabel="ヘッドあたりの次元 d",
+          ylabel="最大の注意重み(200回平均)", ylim=(0, 1.05))
+ax[1].legend(fontsize=9)
+for a in ax:
+    a.grid(alpha=.3)
+plt.tight_layout()
+plt.savefig("attention-hopfield-sqrtd.png", bbox_inches="tight", dpi=150)
+plt.show()
 ```
 
 ```
@@ -222,9 +329,41 @@ def eff(w):
     w = np.clip(w, 1e-30, 1)
     return np.exp(-(w * np.log(w)).sum())
 
-for b in [0.5, 2, 4, 8]:
-    w = softmax(b * (X.T @ xi))
-    print(f"β={b:4.1f} (T={1/b:.2f})  最大重み={w.max():.3f}  有効記憶数={eff(w):.2f}")
+
+betas = [0.5, 2, 4, 8]
+for b in betas:
+    ww = softmax(b * (X.T @ xi))
+    print(f"β={b:4.1f} (T={1/b:.2f})  最大重み={ww.max():.3f}  有効記憶数={eff(ww):.2f}")
+
+# ---- 作図1: βごとの重みの棒グラフ ----
+fig, ax = plt.subplots(1, 4, figsize=(13, 2.9), sharey=True)
+for a, b in zip(ax, betas):
+    ww = softmax(b * (X.T @ xi))
+    a.bar(range(N), ww, color=[ORANGE if i == target else BLUE for i in range(N)])
+    a.set(title=f"β={b:g}  (温度 T={1/b:.2f})\n有効記憶数 {eff(ww):.2f}",
+          ylim=(0, 1), xlabel="記憶の番号")
+    a.grid(alpha=.3, axis="y")
+ax[0].set_ylabel("想起の重み")
+plt.tight_layout()
+plt.savefig("attention-hopfield-beta-bars.png", bbox_inches="tight", dpi=150)
+plt.show()
+
+# ---- 作図2: 有効記憶数の温度依存 ----
+bs = np.logspace(-1, 1.6, 80)
+effs = [eff(softmax(b * (X.T @ xi))) for b in bs]
+plt.figure(figsize=(6.2, 3.6))
+plt.semilogx(bs, effs, color=BLUE, lw=2)
+plt.axhline(N, color=GRAY, ls="--", lw=1)
+plt.text(0.11, N - .45, "全部を均等に混ぜた状態", fontsize=9, color=GRAY)
+plt.axhline(1, color=GRAY, ls="--", lw=1)
+plt.text(0.11, 1.15, "1つの記憶に絞れた状態", fontsize=9, color=GRAY)
+plt.xlabel("逆温度 β")
+plt.ylabel("有効記憶数 exp(H)")
+plt.title("温度を下げると記憶は1つに絞られる")
+plt.grid(alpha=.3)
+plt.tight_layout()
+plt.savefig("attention-hopfield-beta-curve.png", bbox_inches="tight", dpi=150)
+plt.show()
 ```
 
 ```
@@ -256,15 +395,36 @@ $\beta$ を上げていくと 5.88 → 4.00 → 1.72 → 1.04 と落ちていき
 rng = np.random.default_rng(4)
 
 d = 64
-for N in [8, 32, 128, 512, 2048, 8192]:
+Ns = [8, 32, 128, 512, 2048, 8192]
+acc = []
+for n in Ns:
     ok = 0
     for _ in range(400):
-        Xc = rng.normal(size=(d, N))
+        Xc = rng.normal(size=(d, n))
         Xc /= np.linalg.norm(Xc, axis=0, keepdims=True)
-        t = rng.integers(N)
+        t = rng.integers(n)
         cue = make_cue(Xc[:, t], 2.0, rng)
         ok += int(softmax(100.0 * (Xc.T @ cue)).argmax() == t)
-    print(f"N={N:5d}  正解率 {ok/400*100:5.1f}%  (でたらめなら {100/N:.3f}%)")
+    acc.append(ok / 400 * 100)
+    print(f"N={n:5d}  正解率 {acc[-1]:5.1f}%  (でたらめなら {100/n:.3f}%)")
+
+# ---- 作図 ----
+plt.figure(figsize=(6.8, 3.9))
+plt.semilogx(Ns, acc, "o-", color=BLUE, lw=2, base=2, label="softmax版(=attention)")
+plt.semilogx(Ns, [100 / n for n in Ns], "--", color=GRAY, lw=1.2, base=2,
+             label="でたらめに選んだ場合")
+plt.axvline(0.138 * d, color=ORANGE, ls="--", lw=1.5)
+plt.text(0.138 * d * 1.15, 42, f"古典Hopfieldの容量\n0.138×d ≒ {0.138*d:.1f}個",
+         fontsize=9, color=ORANGE)
+plt.xlabel(f"詰め込んだ記憶の数 N  (特徴次元 d={d})")
+plt.ylabel("正しく想起できた割合 [%]")
+plt.title("記憶の2倍のノイズを乗せても、数千個から取り出せる")
+plt.ylim(0, 105)
+plt.legend(fontsize=9)
+plt.grid(alpha=.3)
+plt.tight_layout()
+plt.savefig("attention-hopfield-capacity.png", bbox_inches="tight", dpi=150)
+plt.show()
 ```
 
 ```
@@ -303,15 +463,59 @@ ids = tok(text, return_tensors="pt")
 with torch.no_grad():
     out = model(**ids, output_attentions=True)
 
-# 最終トークンが、どのトークンをどれだけ見ているか
-E = []
+T = ids["input_ids"].shape[1]
+toks = [t.replace("▁", "") or "␣" for t in tok.convert_ids_to_tokens(ids["input_ids"][0])]
+L, H = len(out.attentions), out.attentions[0].shape[1]
+
+Emap = np.zeros((L, H))          # ヘッドごとの有効注目数
+Wmap = np.zeros((L, H, T))       # ヘッドごとの注意の重み
 for l, a in enumerate(out.attentions):
-    w = a[0, :, -1, :].float().numpy()      # (ヘッド, トークン)
-    for h in range(w.shape[0]):
-        E.append((eff(w[h]), l, h))
-E.sort()
-print(f"有効注目数: 最小 {E[0][0]:.2f} / 中央値 {np.median([e[0] for e in E]):.2f} "
-      f"/ 最大 {E[-1][0]:.2f}  (全17トークン)")
+    w = a[0, :, -1, :].float().numpy()      # (ヘッド, トークン) 最終トークンの行
+    for h in range(H):
+        Emap[l, h], Wmap[l, h] = eff(w[h]), w[h]
+
+print(f"有効注目数: 最小 {Emap.min():.2f} / 中央値 {np.median(Emap):.2f} "
+      f"/ 最大 {Emap.max():.2f}  (全{T}トークン)")
+
+# ---- 作図1: ヘッドごとの有効注目数 ----
+fig, ax = plt.subplots(1, 2, figsize=(12.5, 3.9), gridspec_kw={"width_ratios": [1.35, 1]})
+im = ax[0].imshow(Emap, aspect="auto", cmap="viridis", vmin=1, vmax=T)
+ax[0].set(title=f"最終トークンから見た「有効注目数」({L}層×{H}ヘッド)",
+          xlabel="ヘッド番号", ylabel="層", xticks=range(H), yticks=range(0, L, 2))
+plt.colorbar(im, ax=ax[0]).set_label(f"何語ぶんを見ているか (最大{T})", fontsize=9)
+ax[1].hist(Emap.ravel(), bins=22, color=BLUE, edgecolor="white")
+ax[1].axvline(1, color=ORANGE, ls="--", lw=1.5)
+ax[1].text(1.25, ax[1].get_ylim()[1] * .82, "1語だけを\n見ている", fontsize=9, color=ORANGE)
+ax[1].set(title="鋭いヘッドと混ぜるヘッドが共存する",
+          xlabel="有効注目数", ylabel="ヘッド数")
+ax[1].grid(alpha=.3)
+plt.tight_layout()
+plt.savefig("attention-hopfield-real-heads.png", bbox_inches="tight", dpi=150)
+plt.show()
+
+# ---- 作図2: 最も鋭いヘッド vs 最も混ぜるヘッド ----
+lo = np.unravel_index(Emap.argmin(), Emap.shape)
+hi = np.unravel_index(Emap.argmax(), Emap.shape)
+fig, ax = plt.subplots(2, 1, figsize=(11, 5.4), sharex=True)
+for a, (l, h), c, lab in [(ax[0], lo, ORANGE, "最も鋭いヘッド"),
+                          (ax[1], hi, BLUE, "最も混ぜるヘッド")]:
+    a.bar(range(T), Wmap[l, h], color=c)
+    a.set(ylabel="注意の重み", ylim=(0, 1))
+    a.set_title(f"{lab}(第{l}層 ヘッド{h})  有効注目数 {Emap[l, h]:.2f}",
+                fontsize=11, loc="left")
+    a.grid(alpha=.3, axis="y")
+ax[1].set_xticks(range(T))
+ax[1].set_xticklabels(toks, rotation=55, ha="right", fontsize=9)
+plt.tight_layout()
+plt.savefig("attention-hopfield-real-sink.png", bbox_inches="tight", dpi=150)
+plt.show()
+
+# 鋭いヘッド上位10個が何を見ているか
+order = np.dstack(np.unravel_index(np.argsort(Emap, axis=None), Emap.shape))[0]
+print("\n最も鋭いヘッド上位10個が見ていたトークン:")
+for l, h in order[:10]:
+    print(f"  第{l:>2}層 ヘッド{h}  有効注目数{Emap[l,h]:.2f}  → {toks[int(Wmap[l,h].argmax())]!r}")
+print(f"  → 上位10個のうち {sum(1 for l,h in order[:10] if Wmap[l,h].argmax()==0)} 個が先頭トークン")
 ```
 
 ```
@@ -328,8 +532,9 @@ $\sqrt{d}$ は温度の基準点を揃えるだけで、そこからどれだけ
 with torch.no_grad():
     hs = model(**ids, output_hidden_states=True).hidden_states
 
-T, d_head = ids["input_ids"].shape[1], 64
-for layer in [0, 6, 11]:
+d_head = model.config.hidden_size // H
+raw, scaled = [], []
+for layer in range(L):
     blk = model.model.layers[layer].self_attn
     with torch.no_grad():
         # q_proj/k_proj には input_layernorm を通した後の値が入る。
@@ -338,8 +543,24 @@ for layer in [0, 6, 11]:
         q = blk.q_proj(x)[0].view(T, -1, d_head).transpose(0, 1)
         k = blk.k_proj(x)[0].view(T, -1, d_head).transpose(0, 1)
         s = torch.matmul(q, k.transpose(-1, -2))
-    print(f"第{layer:>2}層: 割る前 {s.std().item():6.2f} → "
-          f"√d(8)で割った後 {(s / np.sqrt(d_head)).std().item():5.2f}")
+    raw.append(s.std().item())
+    scaled.append((s / np.sqrt(d_head)).std().item())
+    if layer in (0, 6, 11):
+        print(f"第{layer:>2}層: 割る前 {raw[-1]:6.2f} → √d({np.sqrt(d_head):.0f})で割った後 {scaled[-1]:5.2f}")
+
+# ---- 作図 ----
+fig, ax = plt.subplots(figsize=(7.2, 3.8))
+ax.plot(range(L), raw, "o-", color=ORANGE, label="√d で割る前")
+ax.plot(range(L), scaled, "o-", color=BLUE, label="√d で割った後")
+ax.axhline(1, color=GRAY, ls=":", lw=1)
+ax.text(0.1, 1.6, "softmaxがほどよく効く目安", fontsize=8.5, color=GRAY)
+ax.set(title="実効温度は層ごとに違う", xlabel="層", ylabel="スコアの標準偏差",
+       yscale="log", xticks=range(L))
+ax.legend(fontsize=9)
+ax.grid(alpha=.3)
+plt.tight_layout()
+plt.savefig("attention-hopfield-layer-temp.png", bbox_inches="tight", dpi=150)
+plt.show()
 ```
 
 ```
@@ -348,6 +569,8 @@ for layer in [0, 6, 11]:
 第11層: 割る前  10.14 → √d(8)で割った後  1.27
 ```
 
+![層ごとの実効温度](/images/attention-hopfield-layer-temp.png)
+
 同じ $\sqrt{d}$ で割っていても、割った後の散らばりが第6層で3.71、第11層で1.27と3倍近く違います。**層ごとに実効温度が違う**ということです。
 
 ### 最も鋭いヘッドが見ていたのは単語ではなかった
@@ -355,11 +578,12 @@ for layer in [0, 6, 11]:
 ここで予想外の結果が出ました。最も鋭い（＝最も低温の）ヘッド上位10個が何を見ているかを調べると、**10個中10個が文頭トークン `<s>` を見ていました**。
 
 ```
-第 9層 ヘッド1  有効注目数1.04  → '<s>'
-第 3層 ヘッド0  有効注目数1.15  → '<s>'
-第10層 ヘッド4  有効注目数1.33  → '<s>'
-...
-→ 上位10個のうち 10 個が先頭トークンを見ている
+最も鋭いヘッド上位10個が見ていたトークン:
+  第 9層 ヘッド1  有効注目数1.04  → '<s>'
+  第 3層 ヘッド0  有効注目数1.15  → '<s>'
+  第10層 ヘッド4  有効注目数1.33  → '<s>'
+  ...
+  → 上位10個のうち 10 個が先頭トークン
 ```
 
 ![最も鋭いヘッドと最も混ぜるヘッド](/images/attention-hopfield-real-sink.png)
@@ -386,7 +610,31 @@ $$
 
 第1項は log-sum-exp で、統計力学では**自由エネルギー** $-\frac{1}{\beta}\log Z$ そのものです（$Z$ が分配関数）。前回の記事でsoftmaxの分母が分配関数だと確認しましたが、それがここで自由エネルギーとして再登場しています。このエネルギーを $\xi$ で微分して更新式を作ると、先ほどの $X\,\mathrm{softmax}(\beta X^\top\xi)$ が出てきます。
 
-温度によってこの地形がどう変わるかを描くと、話が完結します。
+温度によってこの地形がどう変わるかを、2次元で描いてみます。
+
+```python
+# 2次元の記憶を3つ置いて、エネルギーの地形を温度ごとに描く
+P = np.array([[-1.2, -0.9], [1.3, -0.6], [0.1, 1.3]]).T
+g = np.linspace(-2.2, 2.2, 300)
+GX, GY = np.meshgrid(g, g)
+Z = np.stack([GX.ravel(), GY.ravel()])
+
+fig, ax = plt.subplots(1, 3, figsize=(12.5, 3.7))
+for a, b in zip(ax, [1.0, 4.0, 20.0]):
+    s = b * (P.T @ Z)
+    lse = (np.log(np.exp(s - s.max(0)).sum(0)) + s.max(0)) / b   # 自由エネルギー
+    E = (-lse + 0.5 * (Z ** 2).sum(0)).reshape(GX.shape)
+    a.contourf(GX, GY, E, levels=28, cmap="Blues_r")
+    a.contour(GX, GY, E, levels=14, colors="white", linewidths=.4, alpha=.6)
+    a.scatter(P[0], P[1], c=ORANGE, s=70, edgecolor="white", zorder=5, label="記憶")
+    a.set(title=f"β={b:g}  (温度 T={1/b:.2f})", xticks=[], yticks=[])
+ax[0].legend(fontsize=9, loc="upper left")
+ax[0].set_ylabel("エネルギーの地形")
+fig.suptitle("温度を下げると、記憶のひとつひとつが別々の谷になる", fontsize=12, y=1.04)
+plt.tight_layout()
+plt.savefig("attention-hopfield-energy.png", bbox_inches="tight", dpi=150)
+plt.show()
+```
 
 ![エネルギーの地形](/images/attention-hopfield-energy.png)
 
@@ -414,5 +662,6 @@ $$
 - J. J. Hopfield, [Neural networks and physical systems with emergent collective computational abilities](https://www.pnas.org/doi/10.1073/pnas.79.8.2554) (PNAS 1982) — 連想記憶の原論文
 - Amit, Gutfreund & Sompolinsky, [Storing infinite numbers of patterns in a spin-glass model of neural networks](https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.55.1530) (PRL 1985) — 容量 $0.138N$ の導出
 - Xiao et al., [Efficient Streaming Language Models with Attention Sinks](https://arxiv.org/abs/2309.17453) (ICLR 2024) — attention sink
+- [The Illustrated Transformer](https://jalammar.github.io/illustrated-transformer/) — Attention/Transformerの図解入門
 - [The Nobel Prize in Physics 2024](https://www.nobelprize.org/prizes/physics/2024/summary/) — Hopfield と Hinton の受賞
 - 前回の記事: [LLMのtemperatureは本当に温度だった](https://zenn.dev/m2yagyu/articles/llm-temperature-boltzmann) — softmaxとボルツマン分布の対応

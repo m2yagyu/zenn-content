@@ -51,6 +51,25 @@ python3 scripts/zenn_analyze.py mine     # 自分の既存記事がどの型に�
 
 ## 3. コードの動作検証(必須・省略しない)
 - 記事に載せるコードは、公開前に必ずこのセッション内で実際に実行して動作確認する。検証できていないコードは記事に含めない
+- **記事のコードブロックには作図処理まで含める(2026-08-08追加)**。
+  読者がコピペすると記事と同じ図が手元に出る状態にする。
+  図を別スクリプトで作ると、記事の数値と図がずれる(実際に乱数列の違いでずれた)
+- 本文に載せた出力が本当にそのコードから出るかは、次で機械的に照合する。
+  各コードブロックの先頭で `np.random.default_rng(<seed>)` を明示し、再現可能にしておく
+  ```bash
+  # images/ で実行すると記事用の図もそのまま更新される
+  cd images && ../.venv/bin/python ../scripts/verify_article_code.py ../articles/<slug>.md
+  ```
+- matplotlibの日本語フォントは、環境にあるものを1つ選ぶ書き方にする。
+  `font.family` にリストを渡すと存在しないフォントぶんだけ findfont 警告が大量に出る
+  ```python
+  from matplotlib import font_manager
+  _available = {f.name for f in font_manager.fontManager.ttflist}
+  for _font in ["Hiragino Sans", "IPAexGothic", "Noto Sans CJK JP"]:
+      if _font in _available:
+          plt.rcParams["font.family"] = _font
+          break
+  ```
 - 検証にはこのリポジトリ直下の `.venv`(プロジェクト専用の仮想環境)を使う。使い捨てにせず、次回の記事でも再利用する。システムのPython環境には絶対にインストールしない(この方針は全プロジェクト共通のため `~/.claude/CLAUDE.md` にも記載してある)
   ```bash
   # 初回のみ。既に .venv があればそのまま再利用する

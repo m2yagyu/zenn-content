@@ -3,7 +3,7 @@ title: "Attentionは結局、何を思い出しているのか"
 emoji: "🧠"
 type: "tech" # tech: 技術記事 / idea: アイデア
 topics: ["deeplearning", "生成ai", "llm", "物理", "machinelearning"]
-published: false
+published: true
 ---
 
 この記事を読むと、Transformerの `softmax(QKᵀ/√d)V` が「連想記憶から記憶を思い出す計算」と一字一句同じ式であることを、自分の手で確かめられます。GPUは不要で、前半はnumpyだけ、後半も150Mパラメータの小さなモデルをCPUで動かすだけです。

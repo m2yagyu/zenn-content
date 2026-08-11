@@ -1,0 +1,14 @@
+title: "生成AIの中身は、ぜんぶ物理だった"
+summary: "LLMのtemperatureは統計力学の温度そのもので、Attentionは1982年の連想記憶と同じ式で、拡散モデルはランジュバン方程式です。比喩ではなく同じ式であることを、GPUなしで動くコードと図で1つずつ確かめていく本です。Pythonが書ければ読めます。"
+topics: ["deeplearning", "生成ai", "llm", "物理", "diffusion"]
+published: false
+price: 0
+chapters:
+  - 01-introduction
+  - 02-run-an-llm
+  - 03-temperature
+  - 04-attention
+  - 05-text-to-image
+  - 06-diffusion
+  - 07-mnist
+  - 08-afterword

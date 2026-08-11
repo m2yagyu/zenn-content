@@ -1,0 +1,7 @@
+拡散モデルの betas は温度ではなく「熱浴に浸す速さ」でした。行き先は最初から固定されている。
+
+なら道中を確率的にする必要はない。それがフローマッチングで、FLUXとSD3のスケジューラからはbetasが消えていました。
+
+https://zenn.dev/m2yagyu/articles/flow-matching-vs-diffusion
+
+#生成AI #画像生成AI #機械学習 #FLUX

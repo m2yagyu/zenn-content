@@ -753,3 +753,23 @@ E = (-lse + 0.5 * (Z ** 2).sum(0)).reshape(GX.shape)
 - [The Illustrated Transformer](https://jalammar.github.io/illustrated-transformer/) — Attention/Transformerの図解入門
 - [The Nobel Prize in Physics 2024](https://www.nobelprize.org/prizes/physics/2024/summary/) — Hopfield と Hinton の受賞
 - 前回の記事: [LLMのtemperatureは本当に温度だった](https://zenn.dev/m2yagyu/articles/llm-temperature-boltzmann) — softmaxとボルツマン分布の対応
+
+---
+
+**このシリーズの続き**
+
+この記事は「生成AIの中身を物理から読む」シリーズの 3 本目です。
+
+次に読む → [Hugging Face推論APIで動かすtext-to-image](https://zenn.dev/m2yagyu/articles/text-to-image-huggingface-colab) — 文章から画像を作るところまでを最小構成で
+
+:::details シリーズ全7本
+
+1. [Colabのセル3つで作るLLMチャットボット](https://zenn.dev/m2yagyu/articles/first-ai-chatbot-colab) — まずLLMを自分の手で動かす
+2. [LLMのtemperatureは本当に温度だった](https://zenn.dev/m2yagyu/articles/llm-temperature-boltzmann) — softmaxが統計力学のボルツマン分布そのものだと測って確かめる
+3. **Attentionは結局、何を思い出しているのか**（この記事）— softmax(QKᵀ/√d)V がHopfieldの連想記憶の想起則と同じ式だと確かめる
+4. [Hugging Face推論APIで動かすtext-to-image](https://zenn.dev/m2yagyu/articles/text-to-image-huggingface-colab) — 文章から画像を作るところまでを最小構成で
+5. [拡散モデルの中身を覗いてみる](https://zenn.dev/m2yagyu/articles/diffusion-model-toy-physics) — 2次元のトイデータで拡散モデルをゼロから実装し、ランジュバン方程式と繋ぐ
+6. [拡散モデルをMNISTで動かす](https://zenn.dev/m2yagyu/articles/diffusion-model-mnist-unet) — 784次元の画像へ拡張しても forward / reverse の式は変わらないことを確かめる
+7. [FLUXが使うフローマッチングって結局何なの？](https://zenn.dev/m2yagyu/articles/flow-matching-vs-diffusion) — 拡散モデルから熱浴を外すと何が残るのか、同じデータ・同じネットで学習則だけ差し替えて測る
+
+:::

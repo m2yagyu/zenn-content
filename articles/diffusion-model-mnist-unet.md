@@ -418,3 +418,23 @@ $$
 ## まとめ
 
 前回の2次元トイモデルを、実際の手書き数字画像MNISTに拡張し、軽量なU-Netをスクラッチで学習させることで、ノイズから数字を生成できることを確認しました。変更点は「ネットワークをMLPからCNN・U-Netにしたこと」と「学習データを画像にしたこと」の2点だけで、forward process・reverse processの数式自体、そして物理（ランジュバン方程式・統計力学）との対応は前回からまったく変わっていません。次元が2次元から784次元に増えても、拡散モデルの骨格が同じままであることが、実際に動くコードで確認できたのではないかと思います。
+
+---
+
+**このシリーズの続き**
+
+この記事は「生成AIの中身を物理から読む」シリーズの 6 本目です。
+
+次に読む → [FLUXが使うフローマッチングって結局何なの？](https://zenn.dev/m2yagyu/articles/flow-matching-vs-diffusion) — 拡散モデルから熱浴を外すと何が残るのか、同じデータ・同じネットで学習則だけ差し替えて測る
+
+:::details シリーズ全7本
+
+1. [Colabのセル3つで作るLLMチャットボット](https://zenn.dev/m2yagyu/articles/first-ai-chatbot-colab) — まずLLMを自分の手で動かす
+2. [LLMのtemperatureは本当に温度だった](https://zenn.dev/m2yagyu/articles/llm-temperature-boltzmann) — softmaxが統計力学のボルツマン分布そのものだと測って確かめる
+3. [Attentionは結局、何を思い出しているのか](https://zenn.dev/m2yagyu/articles/attention-hopfield-associative-memory) — softmax(QKᵀ/√d)V がHopfieldの連想記憶の想起則と同じ式だと確かめる
+4. [Hugging Face推論APIで動かすtext-to-image](https://zenn.dev/m2yagyu/articles/text-to-image-huggingface-colab) — 文章から画像を作るところまでを最小構成で
+5. [拡散モデルの中身を覗いてみる](https://zenn.dev/m2yagyu/articles/diffusion-model-toy-physics) — 2次元のトイデータで拡散モデルをゼロから実装し、ランジュバン方程式と繋ぐ
+6. **拡散モデルをMNISTで動かす**（この記事）— 784次元の画像へ拡張しても forward / reverse の式は変わらないことを確かめる
+7. [FLUXが使うフローマッチングって結局何なの？](https://zenn.dev/m2yagyu/articles/flow-matching-vs-diffusion) — 拡散モデルから熱浴を外すと何が残るのか、同じデータ・同じネットで学習則だけ差し替えて測る
+
+:::

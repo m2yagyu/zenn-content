@@ -614,3 +614,23 @@ reverse processが行っているのは、この平衡状態（ノイズ）か�
 2次元のトイデータを使うことで、拡散モデルが「データを少しずつノイズに埋める（forward）」「学習したスコア関数を使ってノイズから引き上げる（reverse）」という2つの操作の組み合わせでできていることを、実際に動くコードで確認できました。そしてこの仕組みは、インクの拡散やブラウン運動といった物理現象と、数式のレベルでそのまま対応しています。
 
 [前回の記事](https://zenn.dev/m2yagyu/articles/text-to-image-huggingface-colab)で使った画像生成モデルも、扱うデータが2次元の点から高次元の画像に変わるだけで、根っこの考え方は今回と同じです（正確には、FLUXのようなモデルは「flow matching」という関連する別の定式化を使っていますが、「ノイズを繰り返し整えて画像にする」という骨格は共通しています）。次回は、この仕組みが実際の画像データでどう使われているか、もう少し踏み込んでみようと思います。
+
+---
+
+**このシリーズの続き**
+
+この記事は「生成AIの中身を物理から読む」シリーズの 5 本目です。
+
+次に読む → [拡散モデルをMNISTで動かす](https://zenn.dev/m2yagyu/articles/diffusion-model-mnist-unet) — 784次元の画像へ拡張しても forward / reverse の式は変わらないことを確かめる
+
+:::details シリーズ全7本
+
+1. [Colabのセル3つで作るLLMチャットボット](https://zenn.dev/m2yagyu/articles/first-ai-chatbot-colab) — まずLLMを自分の手で動かす
+2. [LLMのtemperatureは本当に温度だった](https://zenn.dev/m2yagyu/articles/llm-temperature-boltzmann) — softmaxが統計力学のボルツマン分布そのものだと測って確かめる
+3. [Attentionは結局、何を思い出しているのか](https://zenn.dev/m2yagyu/articles/attention-hopfield-associative-memory) — softmax(QKᵀ/√d)V がHopfieldの連想記憶の想起則と同じ式だと確かめる
+4. [Hugging Face推論APIで動かすtext-to-image](https://zenn.dev/m2yagyu/articles/text-to-image-huggingface-colab) — 文章から画像を作るところまでを最小構成で
+5. **拡散モデルの中身を覗いてみる**（この記事）— 2次元のトイデータで拡散モデルをゼロから実装し、ランジュバン方程式と繋ぐ
+6. [拡散モデルをMNISTで動かす](https://zenn.dev/m2yagyu/articles/diffusion-model-mnist-unet) — 784次元の画像へ拡張しても forward / reverse の式は変わらないことを確かめる
+7. [FLUXが使うフローマッチングって結局何なの？](https://zenn.dev/m2yagyu/articles/flow-matching-vs-diffusion) — 拡散モデルから熱浴を外すと何が残るのか、同じデータ・同じネットで学習則だけ差し替えて測る
+
+:::

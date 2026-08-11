@@ -471,3 +471,23 @@ $$
 そして機械学習の評価指標であるperplexityは、$e^S$ という実効的な状態数、つまりボルツマンの $S = k_B \ln W$ の裏返しでした。$T \to 0$ でエントロピーが0に、$T \to \infty$ で $\ln V$ に漸近する様子も、実測で確認できました。
 
 一方で、その温度という制御はフロンティアモデルから姿を消しつつあります。トークン単位のつまみから、思考単位の制御へ移りました。とはいえ、softmaxがボルツマン分布であることは変わりません。モデルの内部では今も、10万個の候補に対して分配関数が計算され続けています。
+
+---
+
+**このシリーズの続き**
+
+この記事は「生成AIの中身を物理から読む」シリーズの 2 本目です。
+
+次に読む → [Attentionは結局、何を思い出しているのか](https://zenn.dev/m2yagyu/articles/attention-hopfield-associative-memory) — softmax(QKᵀ/√d)V がHopfieldの連想記憶の想起則と同じ式だと確かめる
+
+:::details シリーズ全7本
+
+1. [Colabのセル3つで作るLLMチャットボット](https://zenn.dev/m2yagyu/articles/first-ai-chatbot-colab) — まずLLMを自分の手で動かす
+2. **LLMのtemperatureは本当に温度だった**（この記事）— softmaxが統計力学のボルツマン分布そのものだと測って確かめる
+3. [Attentionは結局、何を思い出しているのか](https://zenn.dev/m2yagyu/articles/attention-hopfield-associative-memory) — softmax(QKᵀ/√d)V がHopfieldの連想記憶の想起則と同じ式だと確かめる
+4. [Hugging Face推論APIで動かすtext-to-image](https://zenn.dev/m2yagyu/articles/text-to-image-huggingface-colab) — 文章から画像を作るところまでを最小構成で
+5. [拡散モデルの中身を覗いてみる](https://zenn.dev/m2yagyu/articles/diffusion-model-toy-physics) — 2次元のトイデータで拡散モデルをゼロから実装し、ランジュバン方程式と繋ぐ
+6. [拡散モデルをMNISTで動かす](https://zenn.dev/m2yagyu/articles/diffusion-model-mnist-unet) — 784次元の画像へ拡張しても forward / reverse の式は変わらないことを確かめる
+7. [FLUXが使うフローマッチングって結局何なの？](https://zenn.dev/m2yagyu/articles/flow-matching-vs-diffusion) — 拡散モデルから熱浴を外すと何が残るのか、同じデータ・同じネットで学習則だけ差し替えて測る
+
+:::

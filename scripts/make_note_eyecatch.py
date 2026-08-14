@@ -90,3 +90,21 @@ ax.add_patch(plt.Polygon([[-.02, .44], [-.24, .04], [.20, .04]], facecolor=ORANG
                          edgecolor="none", zorder=3))
 face(ax, -.02, -.18, s=.92)
 save(fig, "eyecatch_diffusion.png")
+
+# ============ 第4回：フローマッチング（まっすぐ進む）============
+fig, ax = layout("AIの絵の描き方は", "もう変わっていた", "覚えたばかりだったのに")
+# 後ろにふらついた道
+t = np.linspace(-.85, .72, 260)
+rng = np.random.default_rng(1)
+w = np.cumsum(rng.normal(0, .085, t.size))
+w -= np.linspace(w[0], w[-1], t.size)
+ax.plot(t, -.30 + w * .55 + np.linspace(0, .34, t.size), color=BLUE, lw=6, alpha=.45,
+        solid_capstyle="round", zorder=1)
+# まっすぐな道
+ax.annotate("", xy=(.74, .06), xytext=(-.86, -.32),
+            arrowprops=dict(arrowstyle="-|>,head_width=.42,head_length=.7",
+                            color=ORANGE, lw=11, shrinkA=0, shrinkB=0), zorder=2)
+# 目的地
+ax.add_patch(Circle((.60, .52), .30, facecolor=ORANGE, edgecolor="none", zorder=3))
+face(ax, .60, .54, s=.78)
+save(fig, "eyecatch_flowmatching.png")

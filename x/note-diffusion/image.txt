@@ -1,0 +1,1 @@
+画像は diffusion の見出し画像（note/brand/eyecatch_*.png、1280x670でXのカード比と同じ）をそのまま添付する。

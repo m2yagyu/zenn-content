@@ -1,3 +1,10 @@
+---
+title: AIを疑っていた私が、答えがばらつく理由を調べてみたら温度だった
+chars: 1933
+published: 2026-08-11
+url: https://note.com/ai_stphys/n/n2fcc197a9fb5
+---
+
 私は、生成AIをずっと疑っていました。
 
 理由ははっきりしています。

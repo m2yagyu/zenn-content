@@ -1,3 +1,10 @@
+---
+title: AIが文章のどこを見ているのか覗いてみたら、人の記憶の模型が出てきた
+chars: 2504
+published: 2026-08-12
+url: https://note.com/ai_stphys/n/n787dc2aefd97
+---
+
 私は、人の名前が出てこないことがあります。
 
 顔は浮かんでいる。

@@ -1,3 +1,10 @@
+---
+title: 覚えたばかりのAIの絵の描き方は、もう古いやり方になっていた
+chars: 2367
+published: 2026-08-14
+url: https://note.com/ai_stphys/n/ndd8f80e98911
+---
+
 前回、AIが絵を描く仕組みを覗きました。
 
 まず絵をノイズで壊す。

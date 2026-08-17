@@ -1,3 +1,10 @@
+---
+title: AIに絵を描かせたら、誰のものでもないサインが入っていた
+chars: 1977
+published: 2026-08-15
+url: https://note.com/ai_stphys/n/n082bffd8fc7a
+---
+
 4回続けて、仕組みの話をしてきました。
 
 今回は、実際に動かしてみます。
